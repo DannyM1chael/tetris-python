@@ -131,6 +131,8 @@ shape_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255),
                 (255, 255, 0), (255, 165, 0), (0, 0, 255), (128, 0, 128)]
 # index 0 - 6 назначаем каждой фигуре цвет
 
+# создаем объект
+
 
 class Piece(object):
     def __init__(self, x, y, shape):
@@ -139,6 +141,8 @@ class Piece(object):
         self.shape = shape
         self.color = shape_colors[shapes.index(shape)]
         self.rotation = 0
+
+# создаем сетку
 
 
 def create_grid(locked_positions={}):
@@ -150,6 +154,8 @@ def create_grid(locked_positions={}):
                 c = locked_positions[(j, i)]
                 grid[i][j] = c
     return grid
+
+# функция разворота фигуры
 
 
 def convert_shape_format(shape):
@@ -166,6 +172,8 @@ def convert_shape_format(shape):
         positions[i] = (pos[0] - 2, pos[1] - 4)
 
     return positions
+
+# проверка расположения
 
 
 def valid_space(shape, grid):
@@ -188,6 +196,8 @@ def check_lost(positions):
             return True
     return False
 
+# формируем фигуры
+
 
 def get_shape():
     return Piece(5, 0, random.choice(shapes))
@@ -195,6 +205,8 @@ def get_shape():
 
 def draw_text_middle():
     pass
+
+# отображаем сетку
 
 
 def draw_grid(surface, grid):
@@ -208,13 +220,50 @@ def draw_grid(surface, grid):
             pygame.draw.line(surface, (128, 128, 128),
                              (sx + j * 30, sy), (sx + j * 30, sy + play_height))
 
-
-def clear_rows():
-    pass
+# очищаем заполненный ряд
 
 
-def draw_next_shape():
-    pass
+def clear_rows(grid, locked_positions):
+    inc = 0
+    for i in range(len(grid) - 1, -1, -1):
+        row = grid[i]
+        if(0, 0, 0) not in row:
+            inc += 1
+            ind = 1
+            for j in range(len(row)):
+                try:
+                    del locked_positions[(j, i)]
+                except:
+                    continue
+    if inc > 0:
+        for key in sorted(list(locked_positions), key=lambda x: x[1])[::-1]:
+            x, y = key
+            if y < ind:
+                newKey = (x, y + inc)
+                locked_positions[newKey] = locked_positions.pop(key)
+
+# показываем следующую фигуру
+
+
+def draw_next_shape(shape, surface):
+    font = pygame.font.SysFont('dejavusans', 30)
+    label = font.render('Next Shape', 1, (255, 255, 255))
+
+    sx = top_left_x + play_width + 50
+    sy = top_left_y + play_height/2 - 100
+
+    format = shape.shape[shape.rotation % len(shape.shape)]
+
+    for i, line in enumerate(format):
+        row = list(line)
+        for j, column in enumerate(row):
+            if column == '0':
+                pygame.draw.rect(surface, shape.color,
+                                 (sx + j * block_size, sy + i * block_size, block_size, block_size), 0)
+
+    surface.blit(label, (sx + 10, sy - 30))
+
+# отображаем окно игры
 
 
 def draw_window(surface, grid):
@@ -229,13 +278,12 @@ def draw_window(surface, grid):
     for i in range(len(grid)):
         for j in range(len(grid[i])):
             pygame.draw.rect(
-                surface, grid[i][j], (top_left_x + j * 30, top_left_y + i * 30, 30, 30), 0)
+                surface, grid[i][j], (top_left_x + j * block_size, top_left_y + i * block_size, block_size, block_size), 0)
 
     pygame.draw.rect(surface, (255, 0, 0), (top_left_x,
                                             top_left_y, play_width, play_height), 4)
 
     draw_grid(surface, grid)
-    pygame.display.update()
 
 
 def main(win):
@@ -298,8 +346,11 @@ def main(win):
             current_piece = next_piece
             next_piece = get_shape()
             change_piece = False
+            clear_rows(grid, locked_positions)
 
         draw_window(win, grid)
+        draw_next_shape(next_piece, win)
+        pygame.display.update()
 
         if check_lost(locked_positions):
             run = False
