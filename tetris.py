@@ -202,9 +202,15 @@ def check_lost(positions):
 def get_shape():
     return Piece(5, 0, random.choice(shapes))
 
+# финальный результат
 
-def draw_text_middle():
-    pass
+
+def draw_text_middle(surface, text, size, color):
+    font = pygame.font.SysFont('dejavusans', size, bold=True)
+    label = font.render(text, 1, color)
+
+    surface.blit(label, (top_left_x + play_width/2 - (label.get_width()/2),
+                         top_left_y + play_height/2 - (label.get_height()/2)))
 
 # отображаем сетку
 
@@ -229,7 +235,7 @@ def clear_rows(grid, locked_positions):
         row = grid[i]
         if(0, 0, 0) not in row:
             inc += 1
-            ind = 1
+            ind = i
             for j in range(len(row)):
                 try:
                     del locked_positions[(j, i)]
@@ -241,6 +247,8 @@ def clear_rows(grid, locked_positions):
             if y < ind:
                 newKey = (x, y + inc)
                 locked_positions[newKey] = locked_positions.pop(key)
+
+    return inc
 
 # показываем следующую фигуру
 
@@ -266,7 +274,7 @@ def draw_next_shape(shape, surface):
 # отображаем окно игры
 
 
-def draw_window(surface, grid):
+def draw_window(surface, grid, score=0):
     surface.fill((0, 0, 0))
 
     pygame.font.init()
@@ -275,6 +283,15 @@ def draw_window(surface, grid):
 
     surface.blit(label, (top_left_x + play_width /
                          2 - (label.get_width()/2), 30))
+
+    font = pygame.font.SysFont('dejavusans', 30)
+    label = font.render('Score: ' + str(score), 1, (255, 255, 255))
+
+    sx = top_left_x + play_width + 50
+    sy = top_left_y + play_height/2 - 100
+
+    surface.blit(label, (sx + 20, sy + 160))
+
     for i in range(len(grid)):
         for j in range(len(grid[i])):
             pygame.draw.rect(
@@ -298,11 +315,19 @@ def main(win):
     clock = pygame.time.Clock()
     fall_time = 0
     fall_speed = 0.27
+    fall_acc = 0
+    score = 0
 
     while run:
         grid = create_grid(locked_positions)
         fall_time += clock.get_rawtime()
+        fall_acc += clock.get_rawtime()
         clock.tick()
+
+        if fall_acc/1000 > 5:
+            fall_acc = 0
+            if fall_acc > 0.12:
+                fall_acc -= 0.005
 
         if fall_time/1000 > fall_speed:
             fall_time = 0
@@ -314,6 +339,8 @@ def main(win):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
+                pygame.display.quit()
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     current_piece.x -= 1
@@ -346,19 +373,32 @@ def main(win):
             current_piece = next_piece
             next_piece = get_shape()
             change_piece = False
-            clear_rows(grid, locked_positions)
+            score += clear_rows(grid, locked_positions) * 10
 
-        draw_window(win, grid)
+        draw_window(win, grid, score)
         draw_next_shape(next_piece, win)
         pygame.display.update()
 
         if check_lost(locked_positions):
+            draw_text_middle(win, "You lost", 80, (255, 255, 255))
+            pygame.display.update()
+            pygame.time.delay(1500)
             run = False
-    pygame.display.quit()
 
 
 def main_menu(win):
-    main(win)
+    run = True
+    while run:
+        win.fill((0, 0, 0))
+        draw_text_middle(win, 'Press Any Key to Play', 60, (255, 255, 255))
+        pygame.display.update()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                run = False
+            if event.type == pygame.KEYDOWN:
+                main(win)
+
+    pygame.display.quit()
 
 
 win = pygame.display.set_mode((s_width, s_height))
